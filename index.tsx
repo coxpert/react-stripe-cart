@@ -1,8 +1,13 @@
-import React, { createContext, useState, useContext, ReactNode } from "react";
+import React, {
+  createContext,
+  useState,
+  useContext,
+  ReactNode,
+  useEffect,
+} from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
-import { useEffect } from "react";
-import CartInstance, { CartType, Product, Address } from "./cart";
+import Cart, { CartType, Product, Address } from "./cart";
 
 if (!process.env.REACT_APP_STRIPE_PUBLISHABLE_CUSTOMER_KEY) {
   throw new Error("env REACT_APP_STRIPE_PUBLISHABLE_CUSTOMER_KEY is undefined");
@@ -11,8 +16,6 @@ if (!process.env.REACT_APP_STRIPE_PUBLISHABLE_CUSTOMER_KEY) {
 const stripePromise = loadStripe(
   process.env.REACT_APP_STRIPE_PUBLISHABLE_CUSTOMER_KEY
 );
-
-export const Cart = CartInstance;
 
 interface CartContextType {
   cart: CartType;
