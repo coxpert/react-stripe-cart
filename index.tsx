@@ -1,8 +1,8 @@
-import React, { createContext, useState, useContext } from "react";
+import React, { createContext, useState, useContext, ReactNode } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
 import { useEffect } from "react";
-import CartInstance, { Cart as CartClass, Product, Address } from "./cart";
+import CartInstance, { CartType, Product, Address } from "./cart";
 
 if (!process.env.REACT_APP_STRIPE_PUBLISHABLE_CUSTOMER_KEY) {
   throw new Error("env REACT_APP_STRIPE_PUBLISHABLE_CUSTOMER_KEY is undefined");
@@ -15,7 +15,7 @@ const stripePromise = loadStripe(
 export const Cart = CartInstance;
 
 interface CartContextType {
-  cart: CartClass;
+  cart: CartType;
   loading: boolean;
   addCart: (product: Product) => void;
   updateCart: (product: Product, amount: number) => void;
@@ -40,38 +40,42 @@ const StripeCartContext = createContext<CartContextType>({
 
 export const useCart = () => useContext(StripeCartContext);
 
-export const CartProvider = ({ children }) => {
+interface CartProviderType {
+  children: ReactNode;
+}
+
+export const CartProvider = ({ children }: CartProviderType) => {
   const [loading, setLoading] = useState(false);
 
   const [cart, setCart] = useState(Cart.getCartData());
 
   useEffect(() => {
-    Cart.on("update", (data) => {
+    Cart.on("update", (data: CartType) => {
       setCart(data);
     });
   }, []);
 
-  const setPrivate = (isPrivate) => {
+  const setPrivate = (isPrivate: boolean) => {
     Cart.setPrivate(isPrivate);
   };
 
-  const addCart = (product) => {
+  const addCart = (product: Product) => {
     Cart.addCart(product);
   };
 
-  const updateCart = (product, amount) => {
+  const updateCart = (product: Product, amount: number) => {
     Cart.updateCart(product, amount);
   };
 
-  const removeCartItem = (product) => {
+  const removeCartItem = (product: Product) => {
     Cart.removeCartItem(product);
   };
 
-  const updateCouponCode = (couponCode) => {
+  const updateCouponCode = (couponCode: string) => {
     Cart.updateCouponCode(couponCode);
   };
 
-  const updateBillingAddress = (address, isValid = true) => {
+  const updateBillingAddress = (address: Address, isValid = true) => {
     Cart.updateBillingAddress(address, isValid);
   };
 

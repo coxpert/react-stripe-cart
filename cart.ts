@@ -28,7 +28,7 @@ export interface CartItem<P = Product> {
     price: number
 }
 
-export class Cart {
+class Cart {
     /**
      * Store Name
      */
@@ -137,10 +137,10 @@ export class Cart {
     discountedPrice = 0;
 
     // Update Cart Callback
-    updateCallback: (cart: Cart) => void;
+    updateCallback: ((cart: Cart) => void) | null = null;
 
     // Callback function to get Tax and Shipping Rate
-    getTaxAndShippingRates: (shipData: Record<string, any>) => Promise<{ taxRate?: number, shippingRate?: number }>
+    getTaxAndShippingRates: ((shipData: Record<string, any>) => Promise<{ taxRate?: number, shippingRate?: number }>) | null = null
 
     // indicates loading status when calculating tax and shipping rates
     isUpdating = false;
@@ -160,6 +160,7 @@ export class Cart {
         if (oldCartData) {
             const cartObject = JSON.parse(oldCartData);
             for (const key of Object.keys(cartObject)) {
+                // @ts-ignore
                 this[key] = cartObject[key];
             }
         } else {
@@ -229,7 +230,7 @@ export class Cart {
         }
     }
 
-    setPrivate(isPrivate) {
+    setPrivate(isPrivate: boolean) {
         this.isPrivate = isPrivate;
         this.initialize();
         this.save();
@@ -320,7 +321,7 @@ export class Cart {
      * remove a product from the cart items
      * @param {*} product
      */
-    async removeCartItem(product) {
+    async removeCartItem(product: Product) {
         const cartProductItemIndex = this.cartItems.findIndex(
             item => item.product.pKey === product.pKey,
         );
@@ -343,7 +344,7 @@ export class Cart {
      * @param {*} amount
      * @returns
      */
-    async updateCart(product, amount) {
+    async updateCart(product: Product, amount: number) {
         const cartProductItemIndex = this.cartItems.findIndex(
             item => item.product.pKey === product.pKey,
         );
@@ -482,7 +483,7 @@ export class Cart {
      * updates shipping address
      * @param {*} address
      */
-    updateShippingAddress = address => {
+    updateShippingAddress = (address: Address) => {
         this.shippingAddress = address;
     };
 
@@ -496,7 +497,7 @@ export class Cart {
      * Update coupon code
      * @param {*} coupon
      */
-    updateCouponCode(coupon) {
+    updateCouponCode(coupon: string) {
         this.coupon = coupon;
         this.save();
     }
@@ -506,7 +507,7 @@ export class Cart {
      */
     redeemCoupon() {}
 
-    on(label, callback) {
+    on(label: string, callback: (data: Cart) => void) {
         if (label === 'update') {
             if (typeof callback === 'function') {
                 this.updateCallback = callback;
@@ -516,6 +517,8 @@ export class Cart {
         }
     }
 }
+
+export type CartType = Cart
 
 const CartInstance = Cart.getCart()
 

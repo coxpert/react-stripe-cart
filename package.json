@@ -8,6 +8,7 @@
     "test": "test"
   },
   "scripts": {
+    "typescript": "tsc -p tsconfig.json --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
