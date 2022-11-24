@@ -9,7 +9,7 @@
     "test": "test"
   },
   "scripts": {
-    "typescript": "tsc -p tsconfig.json --noEmit",
+    "check": "tsc -p tsconfig.json --noEmit true",
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -30,13 +30,16 @@
   "license": "ISC",
   "dependencies": {
     "@stripe/react-stripe-js": "^1.15.0",
-    "@stripe/stripe-js": "^1.44.1",
-    "@types/jest": "^29.2.3",
-    "@types/react": "^18.0.25",
-    "@types/react-dom": "^18.0.9",
-    "react": "^18.2.0"
+    "@stripe/stripe-js": "^1.44.1"
+  },
+  "peerDependencies": {
+    "@stripe/react-stripe-js": ">=1.7.0",
+    "@stripe/stripe-js": ">=1.22.1"
   },
   "devDependencies": {
-    "@types/node": "^18.11.9"
+    "@types/jest": "^29.2.3",
+    "@types/node": "^18.11.9",
+    "@types/react": "^18.0.25",
+    "@types/react-dom": "^18.0.9"
   }
 }

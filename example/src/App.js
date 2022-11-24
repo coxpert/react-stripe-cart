@@ -1,8 +1,6 @@
 import { CartProvider } from 'react-stripe-cart'
 import './App.css';
 
-console.log(typeof CartProvider)
-
 function App() {
   return (
     <div className="App">
