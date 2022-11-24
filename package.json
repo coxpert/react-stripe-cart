@@ -10,7 +10,18 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:coxpert/react-stripe-cart.git"
+  },
+  "keywords": [
+    "cart",
+    "multi-cart",
+    "stripe",
+    "react",
+    "hook",
+    "shipping"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
