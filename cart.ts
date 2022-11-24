@@ -137,7 +137,10 @@ class Cart {
     discountedPrice = 0;
 
     // Update Cart Callback
-    updateCallback: ((cart: Cart) => void) | null = null;
+    updateHandler: ((cart: any) => void) | null = null;
+
+    // Create/Submit Order Callback
+    orderSubmitHandler: ((options: any) => void) | null = null;
 
     // Callback function to get Tax and Shipping Rate
     getTaxAndShippingRates: ((shipData: Record<string, any>) => Promise<{ taxRate?: number, shippingRate?: number }>) | null = null
@@ -240,8 +243,9 @@ class Cart {
      *  saves cart object to local storage
      */
     save() {
-        if (typeof this.updateCallback === 'function') {
-            this.updateCallback(this.getCartData());
+        if (typeof this.updateHandler === 'function') {
+            const cartObject = this.getCartData()
+            this.updateHandler(cartObject);
         }
         const cartData = JSON.stringify(this);
         localStorage.setItem(this.getKey(), cartData);
@@ -378,7 +382,7 @@ class Cart {
     }
 
     /**
-     * updates billing addresss
+     * updates billing address
      * @param {*} address
      */
     updateBillingAddress = async (address: Address, isValid = true) => {
@@ -507,14 +511,32 @@ class Cart {
      */
     redeemCoupon() {}
 
-    on(label: string, callback: (data: Cart) => void) {
+    createOrder(data: Record<string, any>) {
+        if (typeof this.orderSubmitHandler === 'function') {
+            this.orderSubmitHandler(data)
+        } else {
+            console.error("orderSubmitHandler is undefined")
+        }
+    }
+
+    on<T = Cart>(
+        label: "update" | "submit",
+        handler: (data: T) => void
+    ) {
         if (label === 'update') {
-            if (typeof callback === 'function') {
-                this.updateCallback = callback;
+            if (typeof handler === 'function') {
+                this.updateHandler = handler;
+            } else {
+                throw new Error('Callback is not a function');
+            }
+        } else if (label === 'submit') {
+            if (typeof handler === 'function') {
+                this.orderSubmitHandler = handler;
             } else {
                 throw new Error('Callback is not a function');
             }
         }
+        return this;
     }
 }
 

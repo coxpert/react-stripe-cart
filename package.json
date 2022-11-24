@@ -1,6 +1,6 @@
 {
   "name": "react-stripe-cart",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -30,7 +30,8 @@
   "license": "ISC",
   "dependencies": {
     "@stripe/react-stripe-js": "^1.15.0",
-    "@stripe/stripe-js": "^1.44.1"
+    "@stripe/stripe-js": "^1.44.1",
+    "react-router-dom": "^6.4.3"
   },
   "peerDependencies": {
     "@stripe/react-stripe-js": ">=1.7.0",
