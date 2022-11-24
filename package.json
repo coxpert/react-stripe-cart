@@ -15,6 +15,7 @@
     "url": "git@github.com:coxpert/react-stripe-cart.git"
   },
   "keywords": [
+    "react-stripe-cart",
     "cart",
     "multi-cart",
     "stripe",
