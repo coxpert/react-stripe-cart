@@ -2,13 +2,15 @@
   "name": "react-stripe-cart",
   "version": "1.0.2",
   "description": "",
-  "main": "index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "directories": {
     "example": "examples",
     "test": "test"
   },
   "scripts": {
     "typescript": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
