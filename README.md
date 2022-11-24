@@ -19,5 +19,11 @@
 Install using [npm](https://npmjs.org)
 
 ```
-npm install mongoose-delete
+npm install react-stripe-cart
+```
+
+Install using [yarn](https://yarnpkg.com)
+
+```
+yarn add react-stripe-cart
 ```
