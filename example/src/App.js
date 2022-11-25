@@ -1,11 +1,18 @@
-import { CartProvider } from 'react-stripe-cart'
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom'
+import { CartProvider } from '@react-providers/cart'
 import './App.css';
+import OrderDetails from './components/OrderDetails';
 
 function App() {
   return (
     <div className="App">
-      <CartProvider>
-        <h1>React Stripe Cart Example</h1>
+      <h1>React Stripe Cart Example</h1>
+      <CartProvider storeName='myStore' >
+        <Router>
+          <Routes>
+            <Route path='/' element={<OrderDetails />} />
+          </Routes>
+        </Router>
       </CartProvider>
     </div >
   );
