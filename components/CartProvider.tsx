@@ -46,7 +46,11 @@ export const CartProvider = ({ children, storeName }: CartProviderType) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [cart, setCart] = useState(Cart.getCartData(storeName));
+  const [cart, setCart] = useState(Cart.getCartData());
+
+  useEffect(() => {
+    Cart.setStoreName(storeName);
+  }, [storeName]);
 
   useEffect(() => {
     Cart.on("update", (data: CartType) => {
