@@ -49,7 +49,9 @@ export const CartProvider = ({ children, storeName }: CartProviderType) => {
   const [cart, setCart] = useState(Cart.getCartData());
 
   useEffect(() => {
-    Cart.setStoreName(storeName);
+    if (storeName) {
+      Cart.setStoreName(storeName);
+    }
   }, [storeName]);
 
   useEffect(() => {
