@@ -405,7 +405,6 @@ class Cart {
             return;
         }
 
-        this.isUpdating = true;
         this.save();
 
         const items: any[] = [];
@@ -472,6 +471,7 @@ class Cart {
         this.shipData = shipData;
 
         if (typeof this.getTaxAndShippingRates === 'function') {
+            this.isUpdating = true;
             const { taxRate = 0, shippingRate = 0 } = await this.getTaxAndShippingRates(shipData);
 
             this.shippingAmount = shippingRate;

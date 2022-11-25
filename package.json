@@ -1,12 +1,13 @@
 {
-  "name": "react-stripe-cart",
-  "version": "1.0.6",
+  "name": "@react-providers/cart",
+  "version": "1.0.1",
   "description": "",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "directories": {
     "example": "examples",
-    "test": "test"
+    "test": "test",
+    "publish": "npm publish --access=public"
   },
   "scripts": {
     "check": "tsc -p tsconfig.json --noEmit true",
@@ -18,7 +19,8 @@
     "url": "git@github.com:coxpert/react-stripe-cart.git"
   },
   "keywords": [
-    "react-stripe-cart",
+    "hooks",
+    "react-hooks",
     "cart",
     "multi-cart",
     "stripe",
