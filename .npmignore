@@ -1,7 +1,5 @@
 node_modules
 example
-components
 test
-cart.ts
-index.ts
 tsconfig.json
+src
