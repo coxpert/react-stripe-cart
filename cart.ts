@@ -519,9 +519,9 @@ class Cart {
         }
     }
 
-    on<T = Cart>(
-        label: "update" | "submit",
-        handler: (data: T) => void
+    on(
+        label: "update" | "submit" | "rates",
+        handler: any
     ) {
         if (label === 'update') {
             if (typeof handler === 'function') {
@@ -532,6 +532,12 @@ class Cart {
         } else if (label === 'submit') {
             if (typeof handler === 'function') {
                 this.orderSubmitHandler = handler;
+            } else {
+                throw new Error('Callback is not a function');
+            }
+        } else if (label === 'rates') {
+            if (typeof handler === 'function') {
+                this.getTaxAndShippingRates = handler;
             } else {
                 throw new Error('Callback is not a function');
             }
