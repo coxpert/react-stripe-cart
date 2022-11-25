@@ -39,13 +39,14 @@ export const useCart = () => useContext(StripeCartContext);
 
 interface CartProviderType {
   children: ReactNode;
+  storeName?: string;
 }
 
-export const CartProvider = ({ children }: CartProviderType) => {
+export const CartProvider = ({ children, storeName }: CartProviderType) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [cart, setCart] = useState(Cart.getCartData());
+  const [cart, setCart] = useState(Cart.getCartData(storeName));
 
   useEffect(() => {
     Cart.on("update", (data: CartType) => {

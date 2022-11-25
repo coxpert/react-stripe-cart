@@ -171,6 +171,13 @@ class Cart {
         }
     }
 
+    setStoreName(storeName: string) {
+        if (storeName) {
+            this.storeName = storeName
+            this.save()
+        }
+    }
+
     getCartData(): Cart {
         return JSON.parse(JSON.stringify(this));
     }
