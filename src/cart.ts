@@ -152,7 +152,7 @@ class Cart {
 
     constructor(storeName?: string) {
         if (storeName) {
-            this.storeName = storeName;
+            this.storeName = storeName
         }
         this.initialize();
         this.isUpdating = false;
@@ -178,8 +178,12 @@ class Cart {
         }
     }
 
-    getCartData(): Cart {
-        return JSON.parse(JSON.stringify(this));
+    getCartData(storeName?: string): Cart {
+        let cart = this as Cart
+        if (storeName) {
+            cart = Cart.getCart(storeName)
+        }
+        return JSON.parse(JSON.stringify(cart));
     }
 
     resetCart() {
@@ -226,7 +230,7 @@ class Cart {
         return Cart.cartInstance;
     }
 
-    getKey() {
+    getKey(storeName?: string) {
         const isPrivate = localStorage.getItem('CHECKOUT_PRIVATE');
 
         if (this.isPrivate !== null) {
@@ -234,9 +238,9 @@ class Cart {
         }
 
         if (this.isPrivate) {
-            return LOCAL_STORAGE_KEY + '_' + this.storeName + '_PRIVATE';
+            return LOCAL_STORAGE_KEY + '_' + (storeName || this.storeName) + '_PRIVATE';
         } else {
-            return LOCAL_STORAGE_KEY + '_' + this.storeName + '_PUBLIC';
+            return LOCAL_STORAGE_KEY + '_' + (storeName || this.storeName) + '_PUBLIC';
         }
     }
 
@@ -499,9 +503,9 @@ class Cart {
     };
 
     // clears cart from the local storage
-    clearCart() {
+    clearCart(storeName?: string) {
         this.resetCart();
-        localStorage.removeItem(this.getKey());
+        localStorage.removeItem(this.getKey(storeName));
     }
 
     /**
