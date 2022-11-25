@@ -1,2 +1,8 @@
 node_modules
 examples
+components
+test
+cart.ts
+index.ts
+tsconfig.json
+dist/examples
