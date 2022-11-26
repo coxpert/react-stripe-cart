@@ -47,11 +47,6 @@ class Cart {
     storeName = 'DEFAULT_STORE';
 
     /**
-     * If true, this is private checkout which means the store is authenticated users' store
-     */
-    isPrivate = false;
-
-    /**
      *  Order total price
      *  product price + fulfillment
      */
