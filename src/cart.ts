@@ -137,16 +137,22 @@ class Cart {
     discountedPrice = 0;
 
     // Update Cart Callback
-    updateHandler: ((cart: any) => void) | null = null;
+    updateHandler: ((cart: any, event: Cart) => void) | null = null;
 
     // Create/Submit Order Callback
-    orderSubmitHandler: ((options: any) => void) | null = null;
+    orderSubmitHandler: ((options: any, event: Cart) => void) | null = null;
 
     // Callback function to get Tax and Shipping Rate
-    getTaxAndShippingRates: ((shipData: Record<string, any>) => Promise<{ taxRate?: number, shippingRate?: number }>) | null = null
+    getTaxAndShippingRates: ((shipData: Record<string, any>, event: Cart) => Promise<{ taxRate?: number, shippingRate?: number }>) | null = null
 
     // indicates loading status when calculating tax and shipping rates
     isUpdating = false;
+
+    // Stripe fee percent
+    stripeFeeRate = 0.049
+
+    // useStripe Fee
+    useStripeFee = true
 
     static cartInstance: Cart | null = null;
 
@@ -171,11 +177,12 @@ class Cart {
         }
     }
 
-    setStoreName(storeName: string) {
+    setStoreName(storeName: string): Cart {
         if (storeName) {
             this.storeName = storeName
             this.save()
         }
+        return this
     }
 
     getCartData(storeName?: string): Cart {
@@ -186,7 +193,7 @@ class Cart {
         return JSON.parse(JSON.stringify(cart));
     }
 
-    resetCart() {
+    resetCart(): Cart {
         this.totalPrice = 0;
         this.subTotalPrice = 0;
         this.totalQuantity = 0;
@@ -218,54 +225,67 @@ class Cart {
         this.shippingAmount = 0;
         this.taxRate = 0;
         this.shippingCost = 0;
+
+        return this
     }
 
     /**
      * @returns new cart object
      */
-    static getCart(storeName?: string) {
+    static getCart(storeName?: string): Cart {
         if (!Cart.cartInstance) {
             Cart.cartInstance = new Cart(storeName);
         }
         return Cart.cartInstance;
     }
 
-    getKey(storeName?: string) {
-        const isPrivate = localStorage.getItem('CHECKOUT_PRIVATE');
-
-        if (this.isPrivate !== null) {
-            this.isPrivate = isPrivate === 'true';
-        }
-
-        if (this.isPrivate) {
-            return LOCAL_STORAGE_KEY + '_' + (storeName || this.storeName) + '_PRIVATE';
-        } else {
-            return LOCAL_STORAGE_KEY + '_' + (storeName || this.storeName) + '_PUBLIC';
-        }
+    getKey(storeName?: string): string {
+        return LOCAL_STORAGE_KEY + '_' + (storeName || this.storeName) + '_CART';
     }
 
-    setPrivate(isPrivate: boolean) {
-        this.isPrivate = isPrivate;
+    enableStripeFee(useStripeFee: boolean) {
+        this.useStripeFee = useStripeFee;
         this.initialize();
         this.save();
+        return true
     }
 
     /**
      *  saves cart object to local storage
      */
-    save() {
+    save(): Cart {
         if (typeof this.updateHandler === 'function') {
             const cartObject = this.getCartData()
-            this.updateHandler(cartObject);
+            this.updateHandler(cartObject, this);
         }
         const cartData = JSON.stringify(this);
         localStorage.setItem(this.getKey(), cartData);
+        return this
+    }
+
+    calculateTax(): number {
+        if (this.taxRate) {
+            return (this.subTotalPrice + this.shippingAmount) * this.taxRate;
+        }
+        return 0
+    }
+
+    calculateStripeFee(): number {
+        if (!this.useStripeFee) {
+            return 0
+        }
+        if (this.stripeFeeRate) {
+            const tempTotal = this.subTotalPrice + this.taxAmount + this.shippingAmount
+            return (tempTotal + tempTotal * this.stripeFeeRate) * this.stripeFeeRate;
+        }
+        console.warn("Stripe fee rate is undefined")
+        return 0
     }
 
     /**
      *  calculates total price, subtotal, total quantity
      */
-    calculateTotalPrice() {
+    calculateTotalPrice(): Cart {
         this.subTotalPrice = 0;
         this.totalQuantity = 0;
 
@@ -274,30 +294,11 @@ class Cart {
             this.totalQuantity += cartItem.quantity;
         }
 
-        if (this.taxRate) {
-            if (this.isPrivate) {
-                /*
-                 * Private Checkout Private Checkout.
-                 *
-                 * Printful Shipping + 4.9% + .3
-                 * Printful Tax
-                 */
-                this.taxAmount = (this.subTotalPrice + this.shippingAmount) * this.taxRate;
-                const stripeFee =
-                    (this.subTotalPrice + this.taxAmount + this.shippingAmount) * 0.049 + 0.3;
-                this.shippingCost = this.shippingAmount + stripeFee;
-            } else {
-                /*
-                 * Public Checkout Private Checkout.
-                 *
-                 * Shipping = Printful Shipping + 1.97
-                 * Tax = Printful Tax + 1.47
-                 * Don't charge stripe fee for public
-                 */
-                this.shippingCost = this.shippingAmount + 1.97;
-                this.taxAmount = (this.subTotalPrice + this.shippingCost) * this.taxRate + 1.47;
-            }
-        }
+        this.taxAmount = this.calculateTax();
+
+        const stripeFee = this.calculateStripeFee();
+
+        this.shippingCost = this.shippingAmount + stripeFee;
 
         /*
          * Shipping = Shipment cost + Stripe Free
@@ -307,12 +308,13 @@ class Cart {
 
         this.taxAmount = Number(this.taxAmount.toFixed(2));
         this.totalPrice = Number(this.totalPrice.toFixed(2));
+        return this
     }
 
     /**
      *  adds a product to cart items, if the product already exists in cart items, just increase quantity
      */
-    async addCart(product: Product) {
+    async addCart(product: Product): Promise<Cart> {
         const cartProductItem = this.cartItems.find(
             item => item.product.variantId === product.variantId,
         );
@@ -330,13 +332,14 @@ class Cart {
         this.hasCart = true;
         this.save();
         await this.updateTaxAndShipAmount();
+        return this
     }
 
     /**
      * remove a product from the cart items
      * @param {*} product
      */
-    async removeCartItem(product: Product) {
+    async removeCartItem(product: Product): Promise<Cart> {
         const cartProductItemIndex = this.cartItems.findIndex(
             item => item.product.pKey === product.pKey,
         );
@@ -349,6 +352,7 @@ class Cart {
         this.hasCart = this.cartItems.length > 0;
         this.save();
         await this.updateTaxAndShipAmount();
+        return this
     }
 
     /**
@@ -359,14 +363,14 @@ class Cart {
      * @param {*} amount
      * @returns
      */
-    async updateCart(product: Product, amount: number) {
+    async updateCart(product: Product, amount: number): Promise<Cart> {
         const cartProductItemIndex = this.cartItems.findIndex(
             item => item.product.pKey === product.pKey,
         );
         const cartProductItem = this.cartItems[cartProductItemIndex];
 
         if (amount === 0 && cartProductItemIndex === -1) {
-            return;
+            return this;
         }
 
         if (amount === 0 && cartProductItemIndex > -1) {
@@ -390,13 +394,15 @@ class Cart {
         this.hasCart = this.cartItems.length > 0;
         this.save();
         await this.updateTaxAndShipAmount();
+
+        return this
     }
 
     /**
      * updates billing address
      * @param {*} address
      */
-    updateBillingAddress = async (address: Address, isValid = true) => {
+    updateBillingAddress = async (address: Address, isValid = true): Promise<Cart> => {
         this.billingAddress = address;
         this.isValidBillingAddress = isValid;
 
@@ -406,14 +412,16 @@ class Cart {
         }
         await this.updateTaxAndShipAmount();
         this.save();
+        return this
     };
 
     /**
      * Get Shipping cost and Tax rate from printful according to the order items
      */
-    updateTaxAndShipAmount = async () => {
+    updateTaxAndShipAmount = async (): Promise<Cart> => {
         if (!this.isValidBillingAddress) {
-            return;
+            console.log("Billing address is invalid")
+            return this;
         }
 
         this.save();
@@ -483,15 +491,13 @@ class Cart {
 
         if (typeof this.getTaxAndShippingRates === 'function') {
             this.isUpdating = true;
-            const { taxRate = 0, shippingRate = 0 } = await this.getTaxAndShippingRates(shipData);
-
-            this.shippingAmount = shippingRate;
-            this.taxRate = taxRate;
+            await this.getTaxAndShippingRates(shipData, this);
             this.calculateTotalPrice();
-
             this.isUpdating = false;
             this.save();
         }
+
+        return this
     };
 
     /**
@@ -524,7 +530,7 @@ class Cart {
 
     createOrder(data: Record<string, any>) {
         if (typeof this.orderSubmitHandler === 'function') {
-            this.orderSubmitHandler(data)
+            this.orderSubmitHandler(data, this)
         } else {
             console.error("orderSubmitHandler is undefined")
         }

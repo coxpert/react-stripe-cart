@@ -16,8 +16,6 @@ interface CartContextType {
   removeCartItem: (product: Product) => void;
   updateBillingAddress: (address: Address) => void;
   updateCouponCode: (code: string) => void;
-  setPrivate: (isPrivate: boolean) => void;
-  setLoading: (loading: boolean) => void;
   placeOrder: (options: Record<string, any>) => void;
 }
 
@@ -30,8 +28,6 @@ const StripeCartContext = createContext<CartContextType>({
   removeCartItem: () => console.warn("removeCartItem not found"),
   updateBillingAddress: () => console.warn("updateBillingAddress not found"),
   updateCouponCode: () => console.warn("updateCouponCode not found"),
-  setLoading: () => console.warn("setLoading not found"),
-  setPrivate: () => console.warn("setPrivate not found"),
   placeOrder: () => console.warn("placeOrder not found"),
 });
 
@@ -49,8 +45,11 @@ export const CartProvider = ({ children, storeName }: CartProviderType) => {
   const [cart, setCart] = useState(Cart.getCartData(storeName));
 
   useEffect(() => {
+    console.log(storeName);
     if (storeName) {
       Cart.setStoreName(storeName);
+      console.log(Cart);
+      console.log(Cart.getCartData());
       setCart(Cart.getCartData());
     }
   }, [storeName]);
@@ -60,10 +59,6 @@ export const CartProvider = ({ children, storeName }: CartProviderType) => {
       setCart(data);
     });
   }, []);
-
-  const setPrivate = (isPrivate: boolean) => {
-    Cart.setPrivate(isPrivate);
-  };
 
   const addCart = (product: Product) => {
     Cart.addCart(product);
@@ -116,8 +111,6 @@ export const CartProvider = ({ children, storeName }: CartProviderType) => {
         removeCartItem,
         updateBillingAddress,
         updateCouponCode,
-        setLoading,
-        setPrivate,
         placeOrder,
       }}
     >
