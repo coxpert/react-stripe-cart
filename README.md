@@ -19,11 +19,11 @@
 Install using [npm](https://npmjs.org)
 
 ```
-npm install react-stripe-cart
+npm install @react-providers/cart
 ```
 
 Install using [yarn](https://yarnpkg.com)
 
 ```
-yarn add react-stripe-cart
+yarn add @react-providers/cart
 ```
