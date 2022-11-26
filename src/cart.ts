@@ -28,6 +28,18 @@ export interface CartItem<P = Product> {
     price: number
 }
 
+type EventLabels =
+    "update" |
+    "submit" |
+    "rates" |
+    "price.tax" |
+    "price.shipping" |
+    "price.stripeFee" |
+    "rate.tax" |
+    "rate.shipping"
+
+type EventHandler = (event: Cart, data?: Record<string, any>,) => any
+
 class Cart {
     /**
      * Store Name
@@ -116,10 +128,19 @@ class Cart {
     shippingAmount: number = 0;
 
     /**
-     * Shipping cose including stripe fee.
-     * Stripe free = (subtotal + tax + shipping amount) * 0.049 (4.9%) + 0.3
+     * Shipping cose including stripe fee. 
      */
     shippingCost: number = 0;
+
+    /**
+     * Stripe Checkout Fee
+     */
+    stripeFee: number = 0;
+
+    /**
+     * Additional Fee
+     */
+    additionalFee: number = 0
 
     /**
      * tax rate
@@ -136,14 +157,12 @@ class Cart {
      */
     discountedPrice = 0;
 
-    // Update Cart Callback
-    updateHandler: ((cart: any, event: Cart) => void) | null = null;
-
-    // Create/Submit Order Callback
-    orderSubmitHandler: ((options: any, event: Cart) => void) | null = null;
-
-    // Callback function to get Tax and Shipping Rate
-    getTaxAndShippingRates: ((shipData: Record<string, any>, event: Cart) => Promise<{ taxRate?: number, shippingRate?: number }>) | null = null
+    /**
+     * Event Handlers
+     */
+    eventHandlers: {
+        [key in EventLabels]?: EventHandler
+    } = {};
 
     // indicates loading status when calculating tax and shipping rates
     isUpdating = false;
@@ -225,6 +244,7 @@ class Cart {
         this.shippingAmount = 0;
         this.taxRate = 0;
         this.shippingCost = 0;
+        this.additionalFee = 0;
 
         return this
     }
@@ -254,32 +274,56 @@ class Cart {
      *  saves cart object to local storage
      */
     save(): Cart {
-        if (typeof this.updateHandler === 'function') {
+        if (typeof this.eventHandlers['update'] === 'function') {
             const cartObject = this.getCartData()
-            this.updateHandler(cartObject, this);
+            this.eventHandlers['update'](cartObject, this);
         }
         const cartData = JSON.stringify(this);
         localStorage.setItem(this.getKey(), cartData);
         return this
     }
 
-    calculateTax(): number {
-        if (this.taxRate) {
-            return (this.subTotalPrice + this.shippingAmount) * this.taxRate;
-        }
-        return 0
+    /**
+     * Setter for additional Fee
+     */
+    setAdditionalFee(fee: number) {
+        this.additionalFee = fee
     }
 
-    calculateStripeFee(): number {
-        if (!this.useStripeFee) {
-            return 0
+    calculateTax(): void {
+        if (typeof this.eventHandlers['price.tax'] === 'function') {
+            this.eventHandlers['price.tax'](this)
+        } else {
+            this.taxAmount = 0
+            if (this.taxRate) {
+                this.taxAmount = (this.subTotalPrice + this.shippingAmount) * this.taxRate;
+            }
         }
-        if (this.stripeFeeRate) {
-            const tempTotal = this.subTotalPrice + this.taxAmount + this.shippingAmount
-            return (tempTotal + tempTotal * this.stripeFeeRate) * this.stripeFeeRate;
+    }
+
+    calculateStripeFee(): void {
+        if (typeof this.eventHandlers['price.stripeFee'] === 'function') {
+            this.eventHandlers['price.stripeFee'](this)
+        } else {
+            if (!this.useStripeFee) {
+                this.stripeFee = 0
+                return
+            }
+            if (this.stripeFeeRate) {
+                const tempTotal = this.subTotalPrice + this.taxAmount + this.shippingAmount
+                this.stripeFee = (tempTotal + tempTotal * this.stripeFeeRate) * this.stripeFeeRate;
+            }
+            console.warn("Stripe fee rate is undefined")
+            this.stripeFee = 0
         }
-        console.warn("Stripe fee rate is undefined")
-        return 0
+    }
+
+    calculateShippingCost(): void {
+        if (typeof this.eventHandlers['price.shipping'] === 'function') {
+            this.eventHandlers['price.shipping'](this)
+        } else {
+            this.shippingCost = this.shippingAmount + this.stripeFee;
+        }
     }
 
     /**
@@ -294,17 +338,17 @@ class Cart {
             this.totalQuantity += cartItem.quantity;
         }
 
-        this.taxAmount = this.calculateTax();
+        this.calculateTax();
 
-        const stripeFee = this.calculateStripeFee();
+        this.calculateStripeFee();
 
-        this.shippingCost = this.shippingAmount + stripeFee;
+        this.calculateShippingCost();
 
         /*
          * Shipping = Shipment cost + Stripe Free
          * Total = Sub Total + Tax + Shipping
          */
-        this.totalPrice = this.subTotalPrice + this.taxAmount + this.shippingCost;
+        this.totalPrice = this.subTotalPrice + this.taxAmount + this.shippingCost + this.additionalFee;
 
         this.taxAmount = Number(this.taxAmount.toFixed(2));
         this.totalPrice = Number(this.totalPrice.toFixed(2));
@@ -489,9 +533,9 @@ class Cart {
 
         this.shipData = shipData;
 
-        if (typeof this.getTaxAndShippingRates === 'function') {
+        if (typeof this.eventHandlers["rates"] === 'function') {
             this.isUpdating = true;
-            await this.getTaxAndShippingRates(shipData, this);
+            await this.eventHandlers["rates"](this, shipData);
             this.calculateTotalPrice();
             this.isUpdating = false;
             this.save();
@@ -529,36 +573,18 @@ class Cart {
     redeemCoupon() {}
 
     createOrder(data: Record<string, any>) {
-        if (typeof this.orderSubmitHandler === 'function') {
-            this.orderSubmitHandler(data, this)
+        if (typeof this.eventHandlers['submit'] === 'function') {
+            this.eventHandlers['submit'](this, data)
         } else {
             console.error("orderSubmitHandler is undefined")
         }
     }
 
     on(
-        label: "update" | "submit" | "rates",
-        handler: any
+        label: EventLabels,
+        handler: EventHandler
     ) {
-        if (label === 'update') {
-            if (typeof handler === 'function') {
-                this.updateHandler = handler;
-            } else {
-                throw new Error('Callback is not a function');
-            }
-        } else if (label === 'submit') {
-            if (typeof handler === 'function') {
-                this.orderSubmitHandler = handler;
-            } else {
-                throw new Error('Callback is not a function');
-            }
-        } else if (label === 'rates') {
-            if (typeof handler === 'function') {
-                this.getTaxAndShippingRates = handler;
-            } else {
-                throw new Error('Callback is not a function');
-            }
-        }
+        this.eventHandlers[label] = handler
         return this;
     }
 }
