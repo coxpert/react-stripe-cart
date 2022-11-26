@@ -263,11 +263,11 @@ class Cart {
         return LOCAL_STORAGE_KEY + '_' + (storeName || this.storeName) + '_CART';
     }
 
-    enableStripeFee(useStripeFee: boolean) {
+    enableStripeFee(useStripeFee: boolean): Cart {
         this.useStripeFee = useStripeFee;
         this.initialize();
         this.save();
-        return true
+        return this
     }
 
     /**

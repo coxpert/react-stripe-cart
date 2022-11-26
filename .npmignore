@@ -3,3 +3,7 @@ example
 test
 tsconfig.json
 src
+yarn.lock
+.gitignore
+.vscode
+.git
