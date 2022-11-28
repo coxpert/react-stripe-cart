@@ -168,13 +168,22 @@ class Cart {
     // useStripe Fee
     useStripeFee = true
 
+    /**
+     * Currency
+     */
+    currency = 'USD'
+
+    /**
+     * Locale
+     */
+    locale = 'en_US'
+
     static cartInstance: Cart | null = null;
 
     constructor(storeName?: string) {
         if (storeName) {
             this.storeName = storeName
         }
-        this.initialize();
         this.isUpdating = false;
     }
 
@@ -182,6 +191,7 @@ class Cart {
         const oldCartData = localStorage.getItem(this.getKey());
         if (oldCartData) {
             const cartObject = JSON.parse(oldCartData);
+            delete cartObject.eventHandlers
             for (const key of Object.keys(cartObject)) {
                 // @ts-ignore
                 this[key] = cartObject[key];
@@ -200,11 +210,12 @@ class Cart {
     }
 
     getCartData(storeName?: string): Cart {
-        let cart = this as Cart
         if (storeName) {
-            cart = Cart.getCart(storeName)
+            this.storeName = storeName
+            this.initialize()
+            return this.saveCartToLocalStorage()
         }
-        return JSON.parse(JSON.stringify(cart));
+        return JSON.parse(JSON.stringify(this));
     }
 
     resetCart(): Cart {
@@ -251,6 +262,7 @@ class Cart {
         if (!Cart.cartInstance) {
             Cart.cartInstance = new Cart(storeName);
         }
+        Cart.cartInstance.initialize()
         return Cart.cartInstance;
     }
 
@@ -260,7 +272,6 @@ class Cart {
 
     enableStripeFee(useStripeFee: boolean): Cart {
         this.useStripeFee = useStripeFee;
-        this.initialize();
         this.save();
         return this
     }
@@ -269,13 +280,15 @@ class Cart {
      *  saves cart object to local storage
      */
     save(): Cart {
-        if (typeof this.eventHandlers['update'] === 'function') {
-            const cartObject = this.getCartData()
-            this.eventHandlers['update'](cartObject, this);
-        }
+        const cartData = this.saveCartToLocalStorage()
+        this.trigger('update')
+        return cartData
+    }
+
+    saveCartToLocalStorage(): Cart {
         const cartData = JSON.stringify(this);
         localStorage.setItem(this.getKey(), cartData);
-        return this
+        return JSON.parse(cartData)
     }
 
     /**
@@ -286,38 +299,44 @@ class Cart {
     }
 
     calculateTax(): void {
-        if (typeof this.eventHandlers['price.tax'] === 'function') {
-            this.eventHandlers['price.tax'](this)
-        } else {
-            this.taxAmount = 0
-            if (this.taxRate) {
-                this.taxAmount = (this.subTotalPrice + this.shippingAmount) * this.taxRate;
+        if (this.taxRate || this.shippingAmount) {
+            if (typeof this.eventHandlers['price.tax'] === 'function') {
+                this.eventHandlers['price.tax'](this)
+            } else {
+                this.taxAmount = 0
+                if (this.taxRate) {
+                    this.taxAmount = (this.subTotalPrice + this.shippingAmount) * this.taxRate;
+                }
             }
         }
     }
 
     calculateStripeFee(): void {
-        if (typeof this.eventHandlers['price.stripeFee'] === 'function') {
-            this.eventHandlers['price.stripeFee'](this)
-        } else {
-            if (!this.useStripeFee) {
+        if (this.useStripeFee) {
+            if (typeof this.eventHandlers['price.stripeFee'] === 'function') {
+                this.eventHandlers['price.stripeFee'](this)
+            } else {
+                if (!this.useStripeFee) {
+                    this.stripeFee = 0
+                    return
+                }
+                if (this.stripeFeeRate) {
+                    const tempTotal = this.subTotalPrice + this.taxAmount + this.shippingAmount
+                    this.stripeFee = (tempTotal + tempTotal * this.stripeFeeRate) * this.stripeFeeRate;
+                }
+                console.warn("Stripe fee rate is undefined")
                 this.stripeFee = 0
-                return
             }
-            if (this.stripeFeeRate) {
-                const tempTotal = this.subTotalPrice + this.taxAmount + this.shippingAmount
-                this.stripeFee = (tempTotal + tempTotal * this.stripeFeeRate) * this.stripeFeeRate;
-            }
-            console.warn("Stripe fee rate is undefined")
-            this.stripeFee = 0
         }
     }
 
     calculateShippingCost(): void {
-        if (typeof this.eventHandlers['price.shipping'] === 'function') {
-            this.eventHandlers['price.shipping'](this)
-        } else {
-            this.shippingCost = this.shippingAmount + this.stripeFee;
+        if (this.taxRate || this.shippingAmount) {
+            if (typeof this.eventHandlers['price.shipping'] === 'function') {
+                this.trigger("price.shipping")
+            } else {
+                this.shippingCost = this.shippingAmount + this.stripeFee;
+            }
         }
     }
 
@@ -449,8 +468,8 @@ class Cart {
             this.shippingAddress = address;
             this.isValidShippingAddress = isValid;
         }
-        await this.updateTaxAndShipAmount();
         this.save();
+        await this.updateTaxAndShipAmount();
         return this
     };
 
@@ -458,84 +477,27 @@ class Cart {
      * Get Shipping cost and Tax rate from printful according to the order items
      */
     updateTaxAndShipAmount = async (): Promise<Cart> => {
-        if (!this.isValidBillingAddress) {
-            console.log("Billing address is invalid")
+        if (!this.billingAddress || !this.isValidBillingAddress) {
+            console.warn("Billing address is invalid")
             return this;
         }
 
+        this.isUpdating = true;
+        this.trigger("update")
+
+        try {
+            if (this.hasCart && this.isValidBillingAddress) {
+                if (typeof this.eventHandlers["rates"] === 'function') {
+                    await this.trigger('rates');
+                    this.calculateTotalPrice();
+                }
+            }
+        } catch (error: unknown) {
+            console.error(error)
+        }
+
+        this.isUpdating = false;
         this.save();
-
-        const items: any[] = [];
-        for (const cartItem of this.cartItems) {
-            const curProduct = cartItem.product;
-
-            items.push({
-                // used for printful api
-                name: curProduct.name,
-                frontDesignUrl: curProduct.designImage,
-                backDesignUrl: curProduct.backDesignImage,
-
-                // used for send order email
-                productImg: curProduct.image,
-                backProductImg: curProduct.backImage,
-                slug: curProduct.slug,
-                productStatus: curProduct.slug === 'Case' ? true : curProduct.slug === 'poster',
-                color_code: curProduct.color_code,
-                color_label: curProduct.color_label,
-                size: curProduct.size,
-                price: curProduct.price,
-
-                // used for order creation
-                vendorProduct: curProduct.id,
-                productMapping: curProduct.mappingId,
-                quantity: cartItem.quantity,
-                variant_id: curProduct.variantId,
-                value: curProduct.price,
-            });
-        }
-
-        if (!this.billingAddress) {
-            throw new Error("Billing address is null")
-        }
-
-        // https://developers.printful.com/docs/#operation/createOrder
-        const shipData = {
-            recipient: {
-                name: `${this.billingAddress.firstName} ${this.billingAddress.lastName}`,
-                company: '',
-                address1: this.billingAddress.street,
-                address2: this.billingAddress.aptNo,
-                city: this.billingAddress.city,
-                state_code: this.billingAddress.state,
-                state_name: this.billingAddress.state,
-                country_code: this.billingAddress.country,
-                country_name: this.billingAddress.country,
-                zip: this.billingAddress.zip,
-                phone: this.billingAddress.phoneNumber,
-                email: this.billingAddress.email,
-                tax_number: this.billingAddress.cpfNumber,
-
-                state: this.billingAddress.state,
-                firstName: this.billingAddress.firstName,
-                lastName: this.billingAddress.lastName,
-                street: this.billingAddress.street,
-                country: this.billingAddress.country,
-            },
-            items: items,
-            currency: 'USD',
-            locale: 'en_US',
-        };
-
-        this.shipData = shipData;
-
-        if (typeof this.eventHandlers["rates"] === 'function') {
-            this.isUpdating = true;
-            await this.eventHandlers["rates"](this, shipData);
-            this.calculateTotalPrice();
-            this.isUpdating = false;
-            this.save();
-        }
-
         return this
     };
 
@@ -548,9 +510,10 @@ class Cart {
     };
 
     // clears cart from the local storage
-    clearCart(storeName?: string) {
+    clearCart() {
         this.resetCart();
-        localStorage.removeItem(this.getKey(storeName));
+        localStorage.removeItem(this.getKey());
+        this.trigger("update")
     }
 
     /**
@@ -567,11 +530,16 @@ class Cart {
      */
     redeemCoupon() {}
 
-    createOrder(data: Record<string, any>) {
-        if (typeof this.eventHandlers['submit'] === 'function') {
-            this.eventHandlers['submit'](this, data)
+    async createOrder(data: Record<string, any>) {
+        await this.trigger("submit", data)
+    }
+
+    async trigger(label: EventLabels, data?: any) {
+        const handler = this.eventHandlers[label]
+        if (typeof handler === 'function') {
+            await handler(this, data)
         } else {
-            console.error("orderSubmitHandler is undefined")
+            console.warn(label + " handler is undefined")
         }
     }
 

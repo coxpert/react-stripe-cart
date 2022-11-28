@@ -47,14 +47,14 @@ export const CartProvider = ({ children, storeName }: CartProviderType) => {
   useEffect(() => {
     if (storeName) {
       Cart.setStoreName(storeName);
-      console.log(Cart.getCartData());
       setCart(Cart.getCartData());
     }
   }, [storeName]);
 
   useEffect(() => {
-    Cart.on("update", (data: CartType) => {
-      setCart(data);
+    Cart.on("update", (cart) => {
+      const updatedCart = cart.getCartData();
+      setCart(updatedCart);
     });
   }, []);
 
@@ -78,7 +78,7 @@ export const CartProvider = ({ children, storeName }: CartProviderType) => {
     Cart.updateBillingAddress(address, isValid);
   };
 
-  const placeOrder = async () => {
+  const placeOrder = async (data?: any) => {
     const billingAddress = cart.billingAddress;
 
     if (!billingAddress) {
@@ -89,7 +89,7 @@ export const CartProvider = ({ children, storeName }: CartProviderType) => {
 
     try {
       setLoading(true);
-      await Cart.createOrder(cart);
+      await Cart.createOrder(data);
       Cart.clearCart();
       setLoading(false);
     } catch (error) {
