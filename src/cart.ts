@@ -530,9 +530,9 @@ class Cart {
      */
     redeemCoupon() {}
 
-    async createOrder(data: Record<string, any>) {
+    async createOrder(data: Record<string, any>): Promise<any> {
         if (!this.isUpdating) {
-            await this.trigger("submit", data)
+            return await this.trigger("submit", data)
         } else {
             console.warn("Your cart is in updating, Try again a little later.")
         }

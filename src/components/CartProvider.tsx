@@ -89,9 +89,11 @@ export const CartProvider = ({ children, storeName }: CartProviderType) => {
 
     try {
       setLoading(true);
-      await Cart.createOrder(data);
-      Cart.clearCart();
-      setLoading(false);
+      const res = await Cart.createOrder(data);
+      if (res) {
+        Cart.clearCart();
+        setLoading(false);
+      }
     } catch (error) {
       setLoading(false);
       throw error;
