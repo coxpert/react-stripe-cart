@@ -93,8 +93,8 @@ export const CartProvider = ({ children, storeName }: CartProviderType) => {
       Cart.clearCart();
       setLoading(false);
     } catch (error) {
-      console.log(error);
       setLoading(false);
+      throw error;
     }
   };
 
