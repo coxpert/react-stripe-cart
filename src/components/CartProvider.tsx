@@ -92,12 +92,12 @@ export const CartProvider = ({ children, storeName }: CartProviderType) => {
       const res = await Cart.createOrder(data);
       if (res) {
         Cart.clearCart();
-        setLoading(false);
       }
     } catch (error) {
       setLoading(false);
       throw error;
     }
+    setLoading(false);
   };
 
   return (
